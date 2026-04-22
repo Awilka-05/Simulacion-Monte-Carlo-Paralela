@@ -1,0 +1,23 @@
+import numpy as np, time, csv
+
+GRID_N,DAYS,BETA,GAMMA,MU,INIT_INF,SEED = 1000,365,0.30,0.05,0.002,0.001,42
+
+def init_grid(n,ii,s):
+    rng=np.random.default_rng(s); g=np.zeros((n,n),dtype=np.int8)
+    g[rng.random((n,n))<ii]=1; return g
+
+def sir_step(g,beta,gamma,mu,rng):
+    S,I=(g==0),(g==1)
+    inf_n=sum(np.roll(I,d,a).astype(np.float32) for d,a in[(1,0),(-1,0),(1,1),(-1,1)])
+    p=1-(1-beta)**inf_n; ni=S&(rng.random(g.shape,dtype=np.float32)<p)
+    nr=I&(rng.random(g.shape,dtype=np.float32)<gamma)
+    nd=I&~nr&(rng.random(g.shape,dtype=np.float32)<mu)
+    g2=g.copy(); g2[ni]=1;g2[nr]=2;g2[nd]=3; return g2
+
+def count(g): return {k:int(np.sum(g==v)) for k,v in zip("SIRD",range(4))}
+
+if __name__=="__main__":
+    rng=np.random.default_rng(SEED); g=init_grid(GRID_N,INIT_INF,SEED)
+    stats=[count(g)]; t0=time.perf_counter()
+    for _ in range(DAYS): g=sir_step(g,BETA,GAMMA,MU,rng); stats.append(count(g))
+    print(f"Done {time.perf_counter()-t0:.1f}s")
